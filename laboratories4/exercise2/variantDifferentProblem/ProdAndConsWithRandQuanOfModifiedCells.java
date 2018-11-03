@@ -56,17 +56,17 @@ class Factory {
 abstract class AbstractProducer implements Runnable {
   protected int baseInt;
   protected int nextInt;
-  protected int chunk;
+  protected int cellsQuantity;
   protected Factory f;
 
   public void run() { work(f); }
   private void work(Factory f) {
     int currentFactoryCell = 0;
     Cell c;
-    while(chunk > 0) {
+    while(cellsQuantity > 0) {
       c = getNextCell(f, currentFactoryCell);
       if(changeCellValue(c))
-        chunk--;
+        cellsQuantity--;
       currentFactoryCell = (currentFactoryCell + 1) % f.maxCellsQuan();
     }
   }
@@ -93,19 +93,19 @@ abstract class AbstractProducer implements Runnable {
 }
 
 class Producer extends AbstractProducer {
-  Producer(int chunk, Factory f) {
+  Producer(int cellsQuantity, Factory f) {
     baseInt = 0;
     nextInt = 1;
-    this.chunk = chunk;
+    this.cellsQuantity = cellsQuantity;
     this.f = f;
   }
 }
 
 class Consumer extends AbstractProducer {
-  Consumer(int chunk, Factory f) {
+  Consumer(int cellsQuantity, Factory f) {
     baseInt = 1;
     nextInt = 0;
-    this.chunk = chunk;
+    this.cellsQuantity = cellsQuantity;
     this.f = f;
   }
 }
@@ -129,7 +129,7 @@ class Parser {
   public int getK() { return K; }
 }
 
-public class BufferedChunkedProducerConsumer {
+public class ProdAndConsWithRandQuanOfModifiedCells {
   public static void main(String[] args) {
     Parser p = new Parser(args);
     Random r = new Random();

@@ -1,0 +1,12 @@
+## Variants
+- different problem
+  - The locks are connected with cells
+  - It works, but:
+    - It's not a solution for this problem (it is not provided that every update operation is atomic)
+    - It's also not optimal (there is A LOT of excessive operations connected with locking and unlocking locks)
+  - You can compare this solution with others
+- non fair
+  - There is only one lock connected with cells' aggregate (in this example: Factory)
+  - Why it's non fair variant?
+    - whenever producer or consumer updates Factory, others (Prod and Cons) checks whether their condition is fulfilled or not - and that's the problem
+      - big Persons (Producers and Consumers) may starve, because it's harder for them to fulfill their requirements
