@@ -26,6 +26,8 @@ class Factory {
   }
   private LinkedList<Cell> cells = new LinkedList<Cell>();
   private FactoryMonitor fm;
+  private int producersNeed;
+  private int consumersNeed;
 
   Factory() {
     fm = new FactoryMonitor();
@@ -36,12 +38,14 @@ class Factory {
       // Producer's case
       case WITHOUT_PRODUCT :
         fm.lock.lock();
+        producersNeed = quan;
         try {
           while(quan > quanOfCellsWithSpecificState(baseState))
             fm.notFreeProducer.await();
           for(Cell c : cellsWithSpecificState(quan, baseState))
             c.setValue(nextState);
-          fm.notFreeConsumer.signal();
+          if(consumersNeed < quanOfCellsWithSpecificState(new Consumer().getBaseState()))
+            fm.notFreeConsumer.signal();
         } finally {
           fm.lock.unlock();
         }
@@ -49,12 +53,14 @@ class Factory {
       // Consumer's case
       case WITH_PRODUCT :
         fm.lock.lock();
+        consumersNeed = quan;
         try {
           while(quan > quanOfCellsWithSpecificState(baseState))
             fm.notFreeConsumer.await();
           for(Cell c : cellsWithSpecificState(quan, baseState))
             c.setValue(nextState);
-          fm.notFreeProducer.signal();
+          if(consumersNeed < quanOfCellsWithSpecificState(new Producer().getBaseState()))
+            fm.notFreeProducer.signal();
         } finally {
           fm.lock.unlock();
         }
