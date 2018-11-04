@@ -61,14 +61,23 @@ abstract class AbstractProducer implements Runnable {
 
   public void run() { work(f); }
   private void work(Factory f) {
+    long timeStart;
+    long timeEnd;
+    long timeDiff;
+    int baseCellsQuantity = cellsQuantity;
+
     int currentFactoryCell = 0;
     Cell c;
+    timeStart = System.nanoTime();
     while(cellsQuantity > 0) {
       c = getNextCell(f, currentFactoryCell);
       if(changeCellValue(c))
         cellsQuantity--;
       currentFactoryCell = (currentFactoryCell + 1) % f.maxCellsQuan();
     }
+    timeEnd = System.nanoTime();
+    timeDiff = timeEnd - timeStart;
+    System.out.println(baseCellsQuantity + " " + timeDiff);
   }
   private Cell getNextCell(Factory f, int index) {
     return f.getCell(index);
