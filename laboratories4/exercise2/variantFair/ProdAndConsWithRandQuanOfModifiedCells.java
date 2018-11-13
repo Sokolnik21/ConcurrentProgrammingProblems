@@ -23,25 +23,38 @@ class Factory {
     final Lock lock = new ReentrantLock();
     final Condition notFreeProducer = lock.newCondition();
     final Condition notFreeConsumer = lock.newCondition();
+    final Condition waitingProducer = lock.newCondition();
+    final Condition waitingConsumer = lock.newCondition();
   }
   private LinkedList<Cell> cells = new LinkedList<Cell>();
   private FactoryMonitor fm;
   private int producersNeed;
   private int consumersNeed;
+  private Boolean producerWaiting;
+  private Boolean consumerWaiting;
 
   Factory() {
     fm = new FactoryMonitor();
+    producerWaiting = false;
+    consumerWaiting = false;
   }
 
   public void changeCellsState(int quan, Cell.CellState baseState, Cell.CellState nextState) throws InterruptedException {
+    System.out.println("hi");
     switch(baseState) {
       // Producer's case
       case WITHOUT_PRODUCT :
         fm.lock.lock();
         producersNeed = quan;
         try {
-          while(quan > quanOfCellsWithSpecificState(baseState))
+          while(producerWaiting == true)
+            fm.waitingProducer.await();
+          while(quan > quanOfCellsWithSpecificState(baseState)) {
+            producerWaiting = true;
             fm.notFreeProducer.await();
+          }
+          fm.waitingProducer.signal();
+          producerWaiting = false;
           for(Cell c : cellsWithSpecificState(quan, baseState))
             c.setValue(nextState);
           if(consumersNeed < quanOfCellsWithSpecificState(new Consumer().getBaseState()))
@@ -55,8 +68,14 @@ class Factory {
         fm.lock.lock();
         consumersNeed = quan;
         try {
-          while(quan > quanOfCellsWithSpecificState(baseState))
+          while(consumerWaiting == true)
+            fm.waitingConsumer.await();
+          while(quan > quanOfCellsWithSpecificState(baseState)) {
+            consumerWaiting = true;
             fm.notFreeConsumer.await();
+          }
+          fm.waitingConsumer.signal();
+          consumerWaiting = false;
           for(Cell c : cellsWithSpecificState(quan, baseState))
             c.setValue(nextState);
           if(consumersNeed < quanOfCellsWithSpecificState(new Producer().getBaseState()))
