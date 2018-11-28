@@ -7,16 +7,22 @@ var Fork = function() {
 }
 
 Fork.prototype.acquire = function(cb) {
-    var binaryBackoff = function(cb, fork, time) {
+    var binaryBackoff = function(fork, time) {
         if(fork.state == 1) {
             console.log(time)
-            setTimeout(function() { return binaryBackoff(cb, fork, time * 2); }, time);
+            setTimeout(function() { binaryBackoff(fork, time * 2); }, time);
         } else {
             fork.state = 1;
             cb();
         }
     }
-    binaryBackoff(cb, this, 1);
+
+    // binaryBackoff(this, 1);
+    /**
+     * It is needed to slow down this function
+     * Without this one philosopher could starve the others.
+     */
+    setTimeout(binaryBackoff, 1, this, 1)
 }
 
 Fork.prototype.release = function() {
@@ -41,7 +47,7 @@ Philosopher.prototype.startNaive = function(count) {
      * It is important to pass callback as an argument
      * due to waterfall method that I want to use
      */
-    var eat = function(callback) {
+    var eat = function(cb) {
         forks[f1].acquire(function() {
             forks[f2].acquire(function() {
                 console.log("Philosopher " + id + " ready to eat");
@@ -50,7 +56,7 @@ Philosopher.prototype.startNaive = function(count) {
                     forks[f1].release();
                     forks[f2].release();
 
-                    callback();
+                    cb();
                 }, 100 * Math.random())
             })
         })
@@ -82,7 +88,7 @@ Philosopher.prototype.startAsym = function(count) {
      * It is important to pass callback as an argument
      * due to waterfall method that I want to use
      */
-    var eat = function(callback) {
+    var eat = function(cb) {
         forks[firstFork].acquire(function() {
             forks[secondFork].acquire(function() {
                 console.log("Philosopher " + id + " ready to eat");
@@ -91,7 +97,7 @@ Philosopher.prototype.startAsym = function(count) {
                     forks[firstFork].release();
                     forks[secondFork].release();
 
-                    callback();
+                    cb();
                 }, 100 * Math.random())
             })
         })
@@ -138,7 +144,7 @@ Philosopher.prototype.startConductor = function(count, conductor) {
      * It is important to pass callback as an argument
      * due to waterfall method that I want to use
      */
-    var eat = function(callback) {
+    var eat = function(cb) {
         conductor.acquire(function() {
             forks[f1].acquire(function() {
                 forks[f2].acquire(function() {
@@ -149,7 +155,7 @@ Philosopher.prototype.startConductor = function(count, conductor) {
                         forks[f1].release();
                         forks[f2].release();
 
-                        callback();
+                        cb();
                     }, 100 * Math.random())
                 })
             })
