@@ -15,5 +15,5 @@ Solutions are written in Java and JavaScript
 - Mandelbrot set
 ## laboratories6 [Node.js] - unfinished
 - Introduction to Node.js
-## laboratories7 [Node.js] - unfinished
+## laboratories7 [Node.js]
 - Dining philosophers problem

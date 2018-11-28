@@ -1,5 +1,4 @@
 'use strict';
-
 var async = require("async");
 
 var Fork = function() {
@@ -7,40 +6,17 @@ var Fork = function() {
     return this;
 }
 
-// !!!: https://stackoverflow.com/questions/44603958/variable-change-by-inner-function
-// !!!: https://stackoverflow.com/questions/6847697/how-to-return-value-from-an-asynchronous-callback-function
-Fork.prototype.acquire = function(callback) {
-    var self = this
-    var binaryBackoff = function(self, time) {
-        if(self.state == 1) {
+Fork.prototype.acquire = function(cb) {
+    var binaryBackoff = function(cb, fork, time) {
+        if(fork.state == 1) {
             console.log(time)
-            setTimeout(function() { return binaryBackoff(self, time * 2); }, time);
+            setTimeout(function() { return binaryBackoff(cb, fork, time * 2); }, time);
         } else {
-            // console.log("inner Self: " + self.state)
-            self.state = 1
-            // console.log("inner Self: " + self.state)
-            // return self.state
-            return 1
+            fork.state = 1;
+            cb();
         }
     }
-    var tasks = []
-    tasks.push(function(cb) {
-      console.log("This: " + self.state)
-      cb()
-    })
-    tasks.push(function(cb) {
-      self.state = binaryBackoff(self, 1)
-      cb()
-    })
-    tasks.push(function(cb) {
-      console.log("This: " + self.state)
-      cb()
-    })
-    tasks.push(function(cb) {
-      callback()
-      cb()
-    })
-    async.waterfall(tasks)
+    binaryBackoff(cb, this, 1);
 }
 
 Fork.prototype.release = function() {
@@ -66,31 +42,18 @@ Philosopher.prototype.startNaive = function(count) {
      * due to waterfall method that I want to use
      */
     var eat = function(callback) {
-      forks[f1].acquire(function() {
-          console.log("Philosopher " + id + " took one fork")
-          forks[f2].acquire(function() {
-              console.log("Philosopher " + id + " satisfied");
-              forks[f1].release();
-              forks[f2].release();
+        forks[f1].acquire(function() {
+            forks[f2].acquire(function() {
+                console.log("Philosopher " + id + " ready to eat");
+                setTimeout(function () {
+                    console.log("Philosopher " + id + " satisfied");
+                    forks[f1].release();
+                    forks[f2].release();
 
-              /** I hope that I don't need waterfall here */
-              // var secondForkTasks = []
-              // secondForkTasks.push(function(cb) {
-              //   console.log("Philosopher " + id + " satisfied")
-              //   cb()
-              // })
-              // secondForkTasks.push(function(cb) {
-              //   forks[f1].release()
-              //   cb()
-              // })
-              // secondForkTasks.push(function(cb) {
-              //   forks[f2].release()
-              //   cb()
-              // })
-              // async.waterfall(secondForkTasks)
-          })
-      })
-      callback()
+                    callback();
+                }, 100 * Math.random())
+            })
+        })
     }
 
     var tasks = []
@@ -104,22 +67,100 @@ Philosopher.prototype.startAsym = function(count) {
     var forks = this.forks,
         f1 = this.f1,
         f2 = this.f2,
-        id = this.id;
+        id = this.id,
+        firstFork,
+        secondFork;
+    if (f1 % 2 == 0) {
+        firstFork = f1;
+        secondFork = f2;
+    } else {
+        firstFork = f2;
+        secondFork = f1;
+    }
 
-    // zaimplementuj rozwiazanie asymetryczne
-    // kazdy filozof powinien 'count' razy wykonywac cykl
-    // podnoszenia widelcow -- jedzenia -- zwalniania widelcow
+    /**
+     * It is important to pass callback as an argument
+     * due to waterfall method that I want to use
+     */
+    var eat = function(callback) {
+        forks[firstFork].acquire(function() {
+            forks[secondFork].acquire(function() {
+                console.log("Philosopher " + id + " ready to eat");
+                setTimeout(function () {
+                    console.log("Philosopher " + id + " satisfied");
+                    forks[firstFork].release();
+                    forks[secondFork].release();
+
+                    callback();
+                }, 100 * Math.random())
+            })
+        })
+    }
+
+    var tasks = []
+    for(var i = 0; i < count; i++)
+        tasks.push(eat)
+
+    async.waterfall(tasks);
 }
 
-Philosopher.prototype.startConductor = function(count) {
+var Conductor = function(forks) {
+    this.busy = false;
+    this.forks = forks;
+    return this;
+}
+
+Conductor.prototype.acquire = function(cb) {
+    var binaryBackoff = function(cb, conductor, time) {
+        if(conductor.busy) {
+            console.log(time)
+            setTimeout(function() { return binaryBackoff(cb, conductor, time * 2); }, time);
+        } else {
+            conductor.busy = true;
+            cb();
+        }
+    }
+    binaryBackoff(cb, this, 1);
+}
+
+Conductor.prototype.release = function() {
+  this.busy = false;
+}
+
+Philosopher.prototype.startConductor = function(count, conductor) {
     var forks = this.forks,
         f1 = this.f1,
         f2 = this.f2,
-        id = this.id;
+        id = this.id,
+        conductor = conductor;
 
-    // zaimplementuj rozwiazanie z kelnerem
-    // kazdy filozof powinien 'count' razy wykonywac cykl
-    // podnoszenia widelcow -- jedzenia -- zwalniania widelcow
+    /**
+     * It is important to pass callback as an argument
+     * due to waterfall method that I want to use
+     */
+    var eat = function(callback) {
+        conductor.acquire(function() {
+            forks[f1].acquire(function() {
+                forks[f2].acquire(function() {
+                    console.log("Philosopher " + id + " ready to eat");
+                    setTimeout(function () {
+                        console.log("Philosopher " + id + " satisfied");
+                        conductor.release();
+                        forks[f1].release();
+                        forks[f2].release();
+
+                        callback();
+                    }, 100 * Math.random())
+                })
+            })
+        })
+    }
+
+    var tasks = []
+    for(var i = 0; i < count; i++)
+        tasks.push(eat)
+
+    async.waterfall(tasks);
 }
 
 
@@ -134,6 +175,10 @@ for (var i = 0; i < N; i++) {
     philosophers.push(new Philosopher(i, forks));
 }
 
+var conductor = new Conductor();
+
 for (var i = 0; i < N; i++) {
-    philosophers[i].startNaive(10);
+    // philosophers[i].startNaive(10);
+    // philosophers[i].startAsym(10);
+    philosophers[i].startConductor(10, conductor);
 }
